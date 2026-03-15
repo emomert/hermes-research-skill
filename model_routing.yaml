@@ -1,26 +1,26 @@
 # Model routing configuration for the research pipeline
-# Provider: auto-detected from user's Hermes config at runtime
+# Provider: auto-detected from user's config at runtime
 #
 # TIER SYSTEM:
 #   frontier  - Best available model. Used for writing, final revision.
-#   mid       - Good quality, lower cost. Used for reviews, synthesis.
-#   cheap     - Fast and cheap. Used for quality gate, simple tasks.
+#   mid       - Good quality, lower cost. Used for research, reviews.
+#   cheap     - Fast and cheap. Used for quality gate, synthesizer, simple tasks.
 #
-# The orchestrator reads the user's provider from ~/.hermes/config.yaml at startup
-# and maps tiers to concrete model slugs. Users confirm model assignments before runs start.
+# At the confirmation step, the orchestrator reads the active provider and suggests
+# models from this file. The user confirms or overrides before any run starts.
+# For unknown providers, the agent lists available models and asks the user to assign tiers.
 
-provider: custom
+provider: github-copilot
 
-# Tier-to-model mapping per provider
 tier_models:
+  github-copilot:
+    frontier: claude-sonnet-4-6      # heavyweight writing
+    mid: gpt-4o                      # research, reviews
+    cheap: gpt-4o-mini               # quality gate, synthesizer, general review
   custom:  # OpenCode Go / opencode.ai/zen
     frontier: glm-5
     mid: kimi-k2.5
     cheap: minimax-m2.5
-  nous:
-    frontier: ~  # resolved from ~/.hermes/config.yaml at runtime
-    mid: ~
-    cheap: ~
   anthropic:
     frontier: claude-opus-4-6
     mid: claude-sonnet-4-6
@@ -29,10 +29,11 @@ tier_models:
     frontier: anthropic/claude-opus-4-6
     mid: anthropic/claude-sonnet-4-6
     cheap: google/gemini-3-flash
-  openai-codex:
-    frontier: gpt-5.4
-    mid: gpt-5.3-codex
-    cheap: gpt-5.1-codex-mini
+  openai:
+    frontier: gpt-4o
+    mid: gpt-4o
+    cheap: gpt-4o-mini
+  # Any other provider: agent lists available models and asks user to assign tiers at confirmation
 
 roles:
   research:
@@ -42,7 +43,7 @@ roles:
     max_iterations: 18
   writer:
     tier: frontier
-    description: "Section-by-section manuscript drafting (written part by part)"
+    description: "Section-by-section manuscript drafting (written part by part to optimize depth and tokens)"
     toolsets: []
     max_iterations: 12
   review_academic:
