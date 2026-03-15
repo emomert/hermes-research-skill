@@ -18,9 +18,9 @@ tier_models:
     mid: kimi-k2.5
     cheap: minimax-m2.5
   nous:
-    frontier: hermes-3-llama-3.1-405b
-    mid: hermes-3-llama-3.1-70b
-    cheap: hermes-3-llama-3.1-8b
+    frontier: ~  # resolved from ~/.hermes/config.yaml at runtime
+    mid: ~
+    cheap: ~
   anthropic:
     frontier: claude-opus-4-6
     mid: claude-sonnet-4-6
