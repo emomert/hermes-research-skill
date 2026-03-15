@@ -1,79 +1,72 @@
 # Model routing configuration for the research pipeline
 # Provider: auto-detected from user's Hermes config at runtime
-# 
+#
 # TIER SYSTEM:
 #   frontier  - Best available model. Used for writing, final revision.
 #   mid       - Good quality, lower cost. Used for reviews, synthesis.
-#   cheap     - Fast and cheap. Used for quality gate, simple classification tasks.
+#   cheap     - Fast and cheap. Used for quality gate, simple tasks.
 #
 # The orchestrator reads the user's provider from ~/.hermes/config.yaml at startup
 # and maps tiers to concrete model slugs. Users confirm model assignments before runs start.
-#
-# Default routing assumes 'nous' provider. Other providers will get suggested models
-# at confirmation time.
 
-provider: nous
+provider: custom
 
-# Tier-to-model mapping per provider (used by orchestrator for suggestions)
+# Tier-to-model mapping per provider
 tier_models:
+  custom:  # OpenCode Go / opencode.ai/zen
+    frontier: glm-5
+    mid: kimi-k2.5
+    cheap: minimax-m2.5
   nous:
-    frontier: claude-opus-4-6
-    mid: claude-sonnet-4-6
-    cheap: deepseek-v3.2
+    frontier: hermes-3-llama-3.1-405b
+    mid: hermes-3-llama-3.1-70b
+    cheap: hermes-3-llama-3.1-8b
   anthropic:
     frontier: claude-opus-4-6
     mid: claude-sonnet-4-6
     cheap: claude-haiku-4-5-20251001
-  openai-codex:
-    frontier: gpt-5.4
-    mid: gpt-5.3-codex
-    cheap: gpt-5.1-codex-mini
   openrouter:
     frontier: anthropic/claude-opus-4-6
     mid: anthropic/claude-sonnet-4-6
     cheap: google/gemini-3-flash
+  openai-codex:
+    frontier: gpt-5.4
+    mid: gpt-5.3-codex
+    cheap: gpt-5.1-codex-mini
 
 roles:
   research:
     tier: mid
-    model: claude-sonnet-4-6
+    description: "Source discovery and research brief compilation"
     toolsets: [web, terminal]
     max_iterations: 18
-    description: "Source discovery and research brief compilation"
   writer:
     tier: frontier
-    model: claude-opus-4-6
-    fallback_model: claude-sonnet-4-6
+    description: "Section-by-section manuscript drafting (written part by part)"
     toolsets: []
     max_iterations: 12
-    description: "Section-by-section manuscript drafting and revision"
   review_academic:
     tier: mid
-    model: claude-sonnet-4-6
+    description: "Academic structure and argument review"
     toolsets: []
     max_iterations: 8
-    description: "Academic structure and argument review"
   review_general:
     tier: cheap
-    model: deepseek-v3.2
+    description: "Readability and engagement review"
     toolsets: []
     max_iterations: 8
-    description: "Readability and engagement review"
   review_source:
     tier: mid
-    model: claude-sonnet-4-6
+    description: "Citation verification and source quality"
     toolsets: []
     max_iterations: 8
-    description: "Citation verification and source quality"
   synthesizer:
     tier: cheap
-    model: deepseek-v3.2
+    description: "Merge reviewer feedback into revision brief"
     toolsets: []
     max_iterations: 8
-    description: "Merge reviewer feedback into revision brief"
   quality_gate:
     tier: cheap
-    model: deepseek-v3.2
+    description: "Pass/revise/warn decision"
     toolsets: []
     max_iterations: 6
-    description: "Pass/revise/warn decision"
