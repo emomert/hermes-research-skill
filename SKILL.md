@@ -147,9 +147,17 @@ Read the script output carefully.
 - Iteration count
 - Manuscript word count / section count / subsection count
 - Local paths: `article.tex`, `references.bib`, `review_summary.md`, `run_evaluation.md`
-- `article.pdf` path if local compilation was requested and succeeded
+- `article.pdf` path if local or Overleaf compilation produced one
+- GitHub source repo URL if created
+- Publishing-hub / Netlify URLs if configured and updated
 
-Do **not** mention or promise GitHub, Netlify, or Overleaf URLs unless the user has those integrations configured and running.
+GitHub push of the final source artifacts is the default expected behavior.
+When configured, the pipeline may also:
+- Sync the manuscript into an existing Overleaf project via olcli and download a remotely compiled PDF
+- Update a separate publishing-hub GitHub repo and deploy its static site with Netlify CLI
+
+Do not require or emphasize local VPS compilation or repository-side LaTeX builds.
+A short paper should not be framed as publication-ready if manuscript-depth checks indicate otherwise.
 
 End with:
 > You can use `/reviewlast`, `/articlelast`, and `/feedback` to continue working on this paper.
@@ -194,7 +202,7 @@ Load when needed:
 - Ask one question at a time — never bundle intake questions.
 - Do not skip the confirmation step.
 - Do not continue after a weak-source halt.
-- Do not claim GitHub push, Netlify, or Overleaf will work — only mention them if the user has those integrations configured.
+- Do not claim GitHub push, Netlify, or Overleaf will work — these are optional integrations configured separately.
 - Do not trigger GitHub-side LaTeX compilation.
 - Always detect the provider from `model_routing.yaml`; never hardcode a provider assumption.
 - If provider is unknown, ask the user to assign model tiers before running.
