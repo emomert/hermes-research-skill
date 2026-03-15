@@ -1,223 +1,245 @@
 ---
 name: research
-description: Multi-agent research-to-LaTeX article pipeline with interactive intake, multi-model routing, reviewer loops, and cross-run quality heuristics.
-version: 1.3.0
-author: Hermes Agent + OpenClaw
+description: Multi-agent research-to-LaTeX article pipeline. Interactive intake, multi-model subagent orchestration, reviewer loops, quality gate, and final LaTeX delivery. Fully OpenClaw-native — no external scripts needed.
+version: 2.0.0
+author: OpenClaw
 license: MIT
 platforms: [linux]
-metadata:
-  hermes:
-    tags: [Research, Writing, LaTeX, Telegram, Multi-Agent]
-    related_skills: [arxiv, ml-paper-writing]
 ---
 
 # Research Article Pipeline
 
-Use this skill when the user wants a source-grounded, publication-ready LaTeX paper generated through a structured pipeline:
+Orchestrate a full research-to-LaTeX pipeline using OpenClaw subagents.
 
-**research → writing (section by section) → multi-review → synthesis → revision → final LaTeX delivery**
+Pipeline: **intake → research → write (section by section) → 3 reviewers (parallel) → synthesize → revise → quality gate → deliver**
 
 Invoke via: `/research`
 
 ---
 
-## What This Skill Must Do
-
-1. Run an interactive intake — questions asked **one at a time**, in order.
-2. Show a confirmation block including **model routing suggestions** based on the user's active provider.
-3. Wait for explicit user confirmation before proceeding.
-4. Launch the orchestration script.
-5. Return a concise delivery summary of local artifacts only.
-
----
-
 ## Intake Flow
 
-Ask questions **one at a time**, in this exact order. Wait for the answer before asking the next.
+Ask questions ONE AT A TIME, in order. Wait for each answer before asking the next.
 
-**Q1 — Topic**
-"What topic do you want to research?"
+1. "What topic do you want to research?"
+2. "What is your central hypothesis or research question?"
+3. "What should the title of the paper be? (Can be refined later)"
+4. "Which academic field is this for? (e.g. economics, sociology, CS, engineering, psychology)"
+5. "Who is the target audience? (e.g. academic researchers, policymakers, practitioners)"
+6. "What tone? (e.g. formal academic, accessible academic, technical, argumentative)"
+7. "How long? — short (4–6k words) / medium (8–12k words) / long (12–18k words)"
+8. "Any special instructions? (sources to include, arguments to emphasize, sections to skip, etc.) Reply 'none' to skip."
 
-**Q2 — Hypothesis**
-"What is your central hypothesis or research question?"
-
-**Q3 — Title**
-"What should the title of the paper be? (Can be refined later)"
-
-**Q4 — Field / Discipline**
-"Which academic field is this for? (e.g. economics, sociology, computer science, engineering, psychology — or interdisciplinary)"
-
-**Q5 — Target Audience**
-"Who is the target audience? (e.g. academic researchers, policymakers, general educated public, practitioners)"
-
-**Q6 — Tone**
-"What tone do you want? (e.g. formal academic, accessible academic, technical, argumentative)"
-
-**Q7 — Target Length**
-"How long should the paper be?
-- short (4,000–6,000 words)
-- medium (8,000–12,000 words)
-- long (12,000–18,000 words)"
-
-**Q8 — Special Instructions** (optional)
-"Any special instructions? (specific sources, arguments to emphasize, sections to add/skip, etc.) Reply 'none' to skip."
-
-Do not start the pipeline until all 8 answers are collected.
+Do not proceed until all 8 answers are collected.
 
 ---
 
 ## Confirmation Step
 
-After collecting all answers, present this block:
+Present the summary block:
 
 ```
-Title:               <title>
-Field:               <field>
-Audience:            <audience>
-Tone:                <tone>
-Target length:       <length>
-Research topics:     <comma-separated key themes>
-Hypothesis:          <hypothesis, lightly reformulated>
+Title:                <title>
+Field:                <field>
+Audience:             <audience>
+Tone:                 <tone>
+Target length:        <length>
+Research topics:      <comma-separated key themes>
+Hypothesis:           <hypothesis>
 Special instructions: <instructions or "none">
 ```
 
-Then detect the user's active provider from `model_routing.yaml` and display model routing suggestions:
+Then show model routing (use the default model for all roles — the same model running this session):
 
 ```
-Suggested model routing (<provider>):
-- Research agent:      <mid model>      — source discovery, brief compilation
-- Writer agent:        <frontier model> — section-by-section drafting (heavyweight)
-- Academic reviewer:   <mid model>      — structure and argument review
-- General reviewer:    <cheap model>    — readability and engagement
-- Source reviewer:     <mid model>      — citation verification
-- Synthesizer:         <cheap model>    — merge reviewer feedback
-- Quality gate:        <cheap model>    — pass/revise/warn decision
-
-Paper written section by section to optimize token usage and depth.
+Model routing (all roles use current session model):
+- Research agent:    <current model>
+- Writer agent:      <current model>
+- Reviewer agents:   <current model> (×3, run in parallel)
+- Synthesizer:       <current model>
+- Quality gate:      <current model>
 ```
 
-If the provider is not in `model_routing.yaml`, list the models available to the user and ask them to assign frontier / mid / cheap tiers before continuing.
-
-Ask: "Does this look correct? Confirm to proceed, or let me know what to change."
+Ask: "Confirm to proceed, or let me know what to change."
 
 Only proceed after explicit confirmation.
 
 ---
 
-## Execution Step
+## Execution
 
-Once confirmed, run:
+### Step 1 — Research Agent
 
-```bash
-~/.hermes/hermes-agent/venv/bin/python ~/.hermes/skills/research/research/scripts/orchestrate_article.py run \
-  --topic "<topic>" \
-  --hypothesis "<hypothesis>" \
-  --title "<title>" \
-  --tone "<tone>" \
-  --audience "<audience>" \
-  --length "<length>"
+Spawn a subagent to produce a structured research brief.
+
+```
+sessions_spawn(
+  task: "<Load the research prompt from the skill's templates/research_prompt.md, then research the topic below and return valid JSON as specified in that prompt.
+
+Topic: <topic>
+Hypothesis: <hypothesis>
+Title: <title>
+Field: <field>
+Audience: <audience>
+Tone: <tone>
+Length: <length>
+Special instructions: <instructions>
+
+Target: 30-40 sources minimum, at least 15 peer-reviewed. Return ONLY valid JSON per the schema in research_prompt.md.>",
+  runtime: "subagent"
+)
 ```
 
-Additional flags (only when user explicitly requests):
-- `--max-iterations N`
-- `--compile-pdf` — local PDF compilation on the VPS
-- `--skip-github-push` — disable GitHub push for this run
-- `--skip-overleaf-compile` — disable Overleaf sync
-- `--skip-publishing-hub` — disable publishing hub update
-- `--skip-netlify-deploy` — disable Netlify deploy
+Read `templates/research_prompt.md` and pass its full contents as the system prompt to the subagent.
 
-Always quote shell arguments safely.
+If the subagent reports `status: insufficient_sources`:
+- Tell the user the run was halted: insufficient credible sources found
+- Do not proceed
 
-**Default behavior: no automatic GitHub push, no Netlify deploy, no Overleaf sync unless the user has those configured and explicitly wants them.**
+Otherwise: extract `sources`, `research_brief_markdown`, `suggested_figures`, `suggested_outline` from the JSON output.
+
+Create the run directory: `~/hermes_article_pipeline/runs/<YYYYMMDD_HHMMSS>/`
+Save `research_brief.md` there.
 
 ---
 
-## After Script Completion
+### Step 2 — Writer Agent (section by section)
 
-Read the script output carefully.
+Read `templates/writer_prompt.md`. Spawn a writer subagent for each major section separately to optimize depth and token usage.
 
-**If insufficient credible sources:**
-- Tell the user the run was halted intentionally
-- Report the warning plainly
-- Do not pretend an article was produced
+Sections (adapt based on field):
+1. Introduction
+2. Conceptual Framework / Literature Review
+3. Data and Sources
+4. Methodology
+5. Results / Analysis
+6. Discussion and Implications
+7. Conclusion
+8. References (BibTeX)
 
-**If successful**, summarize:
-- Run ID and run directory
-- Final quality score
-- Iteration count
-- Manuscript word count / section count / subsection count
-- Local paths: `article.tex`, `references.bib`, `review_summary.md`, `run_evaluation.md`
-- `article.pdf` path if local or Overleaf compilation produced one
-- GitHub source repo URL if created
-- Publishing-hub / Netlify URLs if configured and updated
+For each section, spawn:
+```
+sessions_spawn(
+  task: "<You are the Writer Agent. Using the research brief and sources below, write ONLY the section: <section name>.
 
-GitHub push of the final source artifacts is the default expected behavior.
-When configured, the pipeline may also:
-- Sync the manuscript into an existing Overleaf project via olcli and download a remotely compiled PDF
-- Update a separate publishing-hub GitHub repo and deploy its static site with Netlify CLI
+Research brief: <research_brief_markdown>
+Sources (BibTeX): <bibtex_entries>
+Prior sections written: <accumulated sections so far>
+Title: <title>, Field: <field>, Tone: <tone>, Audience: <audience>
+Special instructions: <instructions>
 
-Do not require or emphasize local VPS compilation or repository-side LaTeX builds.
-A short paper should not be framed as publication-ready if manuscript-depth checks indicate otherwise.
+Follow all instructions in the writer prompt system message exactly. Return the LaTeX content for this section only.>",
+  runtime: "subagent"
+)
+```
+
+Accumulate sections. After all sections, assemble the full `article.tex` with proper `\documentclass`, packages, and `\end{document}`.
+
+Save `article.tex` and `references.bib` to the run directory.
+
+---
+
+### Step 3 — Reviewers (spawn in parallel)
+
+Spawn 3 reviewer subagents simultaneously using the templates:
+
+- **Academic reviewer** (`templates/reviewer_academic.md`) — structure, argument, academic rigor
+- **General reviewer** (`templates/reviewer_general.md`) — readability, engagement, clarity
+- **Source reviewer** (`templates/reviewer_source.md`) — citation quality, source verification
+
+Each receives the full `article.tex` and `research_brief_markdown`.
+
+Each returns structured feedback JSON per the schema in `references/feedback_schema.md`.
+
+---
+
+### Step 4 — Synthesizer
+
+Spawn a synthesizer subagent using `templates/synthesizer_prompt.md`.
+
+Input: all 3 reviewer outputs.
+
+Returns: a unified revision brief with:
+- `must_fix` items (blocking)
+- `should_fix` items (recommended)
+- `optional` items
+
+Save `review_summary.md` to run directory.
+
+---
+
+### Step 5 — Revision
+
+Spawn a writer subagent again with the revision brief. Rewrite sections that have `must_fix` issues. Apply `should_fix` items where possible.
+
+Save the revised `article.tex` (overwrite).
+
+---
+
+### Step 6 — Quality Gate
+
+Spawn a quality gate subagent using `templates/quality_gate_prompt.md`.
+
+Input: revised `article.tex` + `review_summary.md`.
+
+Returns one of:
+- `pass` — deliver to user
+- `revise` — one more revision loop (max 2 total loops)
+- `warn` — deliver with warnings
+
+---
+
+### Step 7 — Deliver
+
+Save final artifacts to run directory:
+- `article.tex`
+- `references.bib`
+- `research_brief.md`
+- `review_summary.md`
+- `run_evaluation.md` (quality score, iteration count, word count)
+- `README.md`
+
+Report to user:
+```
+Run ID:        <run-id>
+Quality score: <score>
+Iterations:    <n>
+Word count:    ~<n> words
+Sections:      <n>
+
+Artifacts saved to: ~/hermes_article_pipeline/runs/<run-id>/
+  - article.tex
+  - references.bib
+  - review_summary.md
+  - run_evaluation.md
+```
 
 End with:
-> You can use `/reviewlast`, `/articlelast`, and `/feedback` to continue working on this paper.
+> Use `/reviewlast`, `/articlelast`, or `/feedback <message>` to continue.
 
 ---
 
-## Companion Commands
+## Supporting Templates
 
-- `/reviewlast` — show the latest review summary
-- `/articlelast` — show the latest manuscript
-- `/feedback <message>` — send feedback to improve the pipeline
-
-Do not reimplement these inline.
-
----
-
-## Supporting Files
-
-Load when needed:
-- `templates/research_prompt.md`
-- `templates/writer_prompt.md`
-- `templates/reviewer_academic.md`
-- `templates/reviewer_general.md`
-- `templates/reviewer_source.md`
-- `templates/synthesizer_prompt.md`
-- `templates/quality_gate_prompt.md`
-- `references/architecture.md`
-- `references/editorial_heuristics.md`
-- `references/feedback_schema.md`
-- `references/model_routing.md`
-- `references/telegram_commands.md`
-- `references/publishing_integrations.md`
-- `model_routing.yaml`
-- `scripts/orchestrate_article.py`
-- `scripts/overleaf_compile.py`
-- `scripts/publish_hub.py`
+Always load these before spawning the relevant subagent:
+- `templates/research_prompt.md` → research agent system prompt
+- `templates/writer_prompt.md` → writer agent system prompt
+- `templates/reviewer_academic.md` → academic reviewer system prompt
+- `templates/reviewer_general.md` → general reviewer system prompt
+- `templates/reviewer_source.md` → source reviewer system prompt
+- `templates/synthesizer_prompt.md` → synthesizer system prompt
+- `templates/quality_gate_prompt.md` → quality gate system prompt
+- `references/feedback_schema.md` → reviewer output schema
+- `references/editorial_heuristics.md` → cross-run quality heuristics
 
 ---
 
 ## Pitfalls
 
-- Ask one question at a time — never bundle intake questions.
+- Ask intake questions one at a time — never bundle them.
 - Do not skip the confirmation step.
-- Do not continue after a weak-source halt.
-- Do not claim GitHub push, Netlify, or Overleaf will work — these are optional integrations configured separately.
-- Do not trigger GitHub-side LaTeX compilation.
-- Always detect the provider from `model_routing.yaml`; never hardcode a provider assumption.
-- If provider is unknown, ask the user to assign model tiers before running.
-
----
-
-## Verification
-
-A successful run leaves artifacts under:
-`~/hermes_article_pipeline/runs/<run-id>/`
-
-Minimum expected outputs:
-- `article.tex`
-- `references.bib`
-- `research_brief.md`
-- `review_summary.md`
-- `README.md`
-- `run_evaluation.md`
+- Do not proceed past research if `status: insufficient_sources`.
+- Write sections one by one — do not try to write the full paper in one subagent call.
+- Do not invent BibTeX keys — only use keys from the research agent output.
+- Max 2 revision loops total.
+- Always load the template file before spawning each subagent — pass its content as the system prompt.
